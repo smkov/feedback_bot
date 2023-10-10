@@ -87,15 +87,50 @@ async def predict_channel(message: types.Message):
             await message.answer('Неудача: заблокировать можно ответив на первый элемент или текст в медиа-группе')
 
 
-@dp.message_handler(F.from_user.id == admin)
-async def predict_answer(message: types.Message):
+@dp.message_handler(MediaGroupFilter(is_media_group=True), F.from_user.id == admin, content_types=['any'])
+@media_group_handler
+async def album_handler(messages: List[types.Message]):
+    if await check_ban(messages[0].from_id):
+        media = types.MediaGroup()
+        for m in messages:
+            if m.video:
+                if m.caption:
+                    if m.caption_entities:
+                        media.attach_video(m.video.file_id, caption=m.caption, caption_entities=m.caption_entities)
+                    else:
+                        media.attach_video(m.video.file_id, caption=m.caption)
+                else:
+                    media.attach_video(m.video.file_id)
+            if m.photo:
+                if m.caption:
+                    if m.caption_entities:
+                        media.attach_photo(m.photo[-1].file_id, caption=m.caption, caption_entities=m.caption_entities)
+                    else:
+                        media.attach_photo(m.photo[-1].file_id, caption=m.caption)
+
+                else:
+                    media.attach_photo(m.photo[-1].file_id)
+
+        try:
+            predict_user_id = messages[0].reply_to_message.text.split('id: ')[1].split(',')[0]
+            await bot.send_media_group(chat_id=predict_user_id, media=media)
+        except Exception as e:
+            try:
+                predict_user_id = messages[0].reply_to_message.caption.split('id: ')[1].split(',')[0]
+                await bot.send_media_group(chat_id=predict_user_id, media=media)
+            except Exception as e:
+                await messages[0].answer(
+                    'Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
+
+@dp.message_handler(F.from_user.id == admin, content_types='any')
+async def predict_answer_media(message: types.Message):
     try:
         predict_user_id = message.reply_to_message.text.split('id: ')[1].split(',')[0]
-        await bot.send_message(chat_id=predict_user_id, text=message.text)
+        await bot.copy_message(chat_id=predict_user_id, from_chat_id=message.chat.id, message_id=message.message_id)
     except Exception as e:
         try:
             predict_user_id = message.reply_to_message.caption.split('id: ')[1].split(',')[0]
-            await bot.send_message(chat_id=predict_user_id, text=message.text)
+            await bot.copy_message(chat_id=predict_user_id, from_chat_id=message.chat.id, message_id=message.message_id)
         except Exception as e:
             await message.answer('Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
 
