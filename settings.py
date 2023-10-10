@@ -1,1 +1,1 @@
-predict_channel_id = -1001587499530
+admin = 5976080333
