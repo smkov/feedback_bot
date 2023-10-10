@@ -106,7 +106,7 @@ async def magic_start(message: types.Message):
         await message.answer('Привет! Напиши своё сообщение, мы постараемся ответить на него')
 
 
-@dp.message_handler(content_types='text')
+@dp.message_handler(F.from_user.id != admin, content_types='text')
 async def forward_predict(message: types.Message):
     if await check_ban(message.from_id):
         predict_post = await message.copy_to(chat_id=admin)
@@ -125,7 +125,8 @@ async def forward_predict(message: types.Message):
 
         await message.answer('Обращение принято, мы постараемся ответить на него')
 
-@dp.message_handler(MediaGroupFilter(is_media_group=True), content_types=['photo', 'video'])
+
+@dp.message_handler(MediaGroupFilter(is_media_group=True), F.from_user.id != admin, content_types=['photo', 'video'])
 @media_group_handler
 async def album_handler(messages: List[types.Message]):
     if await check_ban(messages[0].from_id):
@@ -168,7 +169,7 @@ async def album_handler(messages: List[types.Message]):
         await messages[0].answer('Обращение принято, мы постараемся ответить на него')
 
 
-@dp.message_handler(content_types=['photo', 'video', 'animation', 'document'])
+@dp.message_handler(F.from_user.id != admin, content_types=['photo', 'video', 'animation', 'document'])
 async def forward_predict_media(message: types.Message):
     if await check_ban(message.from_id):
         predict_post = await message.copy_to(chat_id=admin)
