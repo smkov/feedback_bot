@@ -123,6 +123,7 @@ async def forward_predict(message: types.Message):
                                              + '\n\n' + 'Сообщение от id: ' + from_id,
                                         entities=message.entities, disable_web_page_preview=True)
 
+        await message.answer('Обращение принято, мы постараемся ответить на него')
 
 @dp.message_handler(MediaGroupFilter(is_media_group=True), content_types=['photo', 'video'])
 @media_group_handler
@@ -164,6 +165,8 @@ async def album_handler(messages: List[types.Message]):
                                                    + 'Сообщение от id: ' + from_id,
                                            caption_entities=messages[0].caption_entities)
 
+        await messages[0].answer('Обращение принято, мы постараемся ответить на него')
+
 
 @dp.message_handler(content_types=['photo', 'video', 'animation', 'document'])
 async def forward_predict_media(message: types.Message):
@@ -181,6 +184,8 @@ async def forward_predict_media(message: types.Message):
                                            caption=message.caption
                                                    + '\n\n' + 'Сообщение от id: ' + from_id + '\n\n' + message.caption,
                                            caption_entities=message.caption_entities)
+
+        await message.answer('Обращение принято, мы постараемся ответить на него')
 
 
 if __name__ == '__main__':
