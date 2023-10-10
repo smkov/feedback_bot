@@ -122,6 +122,7 @@ async def album_handler(messages: List[types.Message]):
                 await messages[0].answer(
                     'Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
 
+
 @dp.message_handler(F.from_user.id == admin, content_types='any')
 async def predict_answer_media(message: types.Message):
     try:
@@ -161,45 +162,82 @@ async def forward_predict(message: types.Message):
         await message.answer('Обращение принято, мы постараемся ответить на него')
 
 
+@dp.message_handler(F.from_user.id != admin, content_types='sticker')
+async def forward_predict(message: types.Message):
+    if await check_ban(message.from_id):
+        await message.answer('Отправка стикеров не поддерживается')
+
+
 @dp.message_handler(MediaGroupFilter(is_media_group=True), F.from_user.id != admin, content_types=['photo', 'video'])
 @media_group_handler
 async def album_handler(messages: List[types.Message]):
     if await check_ban(messages[0].from_id):
-        media = types.MediaGroup()
-        for m in messages:
-            if m.video:
-                if m.caption:
-                    if m.caption_entities:
-                        media.attach_video(m.video.file_id, caption=m.caption, caption_entities=m.caption_entities)
-                    else:
-                        media.attach_video(m.video.file_id, caption=m.caption)
-                else:
-                    media.attach_video(m.video.file_id)
-            if m.photo:
-                if m.caption:
-                    if m.caption_entities:
-                        media.attach_photo(m.photo[-1].file_id, caption=m.caption, caption_entities=m.caption_entities)
-                    else:
-                        media.attach_photo(m.photo[-1].file_id, caption=m.caption)
+        print(messages)
+        print(messages[0].caption)
+        if messages[0].caption is None:
+            from_id = str(messages[0].from_id)
+            if messages[0].from_user.username is not None:
+                username = str(messages[0].from_user.username)
+                media = types.MediaGroup()
 
-                else:
-                    media.attach_photo(m.photo[-1].file_id)
+                for m in messages:
+                    if m.video:
+                        media.attach_video(m.video.file_id, caption='\n\n' + 'Сообщение от id: '
+                                                                    + from_id + ', username: @' + username)
+                    if m.photo:
+                        media.attach_photo(m.photo[-1].file_id, caption='\n\n' + 'Сообщение от id: '
+                                                                        + from_id + ', username: @' + username)
 
-        predict_post = await bot.send_media_group(chat_id=admin, media=media)
+                await bot.send_media_group(chat_id=admin, media=media)
 
-        from_id = str(messages[0].from_id)
-        if messages[0].from_user.username is not None:
-            username = str(messages[0].from_user.username)
-            print(messages[0].caption_entities)
-            await bot.edit_message_caption(message_id=predict_post[0].message_id, chat_id=admin,
-                                           caption=messages[0].caption
-                                                   + '\n\n' + 'Сообщение от id: ' + from_id + ', username: @' + username,
-                                           caption_entities=messages[0].caption_entities)
+            else:
+                media = types.MediaGroup()
+                for m in messages:
+                    if m.video:
+                        media.attach_video(m.video.file_id,
+                                                   caption='\n\n' + 'Сообщение от id: ' + from_id)
+                    if m.photo:
+                        media.attach_photo(m.photo[-1].file_id,
+                                                   caption='\n\n' + 'Сообщение от id: ' + from_id)
+
+                await bot.send_media_group(chat_id=admin, media=media)
+
         else:
-            await bot.edit_message_caption(message_id=predict_post[0].message_id, chat_id=admin,
-                                           caption=messages[0].caption + '\n\n'
-                                                   + 'Сообщение от id: ' + from_id,
-                                           caption_entities=messages[0].caption_entities)
+            media = types.MediaGroup()
+            for m in messages:
+                if m.video:
+                    if m.caption:
+                        if m.caption_entities:
+                            media.attach_video(m.video.file_id, caption=m.caption, caption_entities=m.caption_entities)
+                        else:
+                            media.attach_video(m.video.file_id, caption=m.caption)
+                    else:
+                        media.attach_video(m.video.file_id)
+                if m.photo:
+                    if m.caption:
+                        if m.caption_entities:
+                            media.attach_photo(m.photo[-1].file_id, caption=m.caption, caption_entities=m.caption_entities)
+                        else:
+                            media.attach_photo(m.photo[-1].file_id, caption=m.caption)
+
+                    else:
+                        media.attach_photo(m.photo[-1].file_id)
+
+            predict_post = await bot.send_media_group(chat_id=admin, media=media)
+
+            from_id = str(messages[0].from_id)
+
+            if messages[0].from_user.username is not None:
+                username = str(messages[0].from_user.username)
+                await bot.edit_message_caption(message_id=predict_post[0].message_id, chat_id=admin,
+                                               caption=messages[0].caption
+                                                       + '\n\n' + 'Сообщение от id: ' + from_id + ', username: @' + username,
+                                               caption_entities=messages[0].caption_entities)
+            else:
+                await bot.edit_message_caption(message_id=predict_post[0].message_id, chat_id=admin,
+                                               caption=messages[0].caption + '\n\n'
+                                                       + 'Сообщение от id: ' + from_id,
+                                               caption_entities=messages[0].caption_entities)
 
         await messages[0].answer('Обращение принято, мы постараемся ответить на него')
 
@@ -207,19 +245,29 @@ async def album_handler(messages: List[types.Message]):
 @dp.message_handler(F.from_user.id != admin, content_types=['photo', 'video', 'animation', 'document'])
 async def forward_predict_media(message: types.Message):
     if await check_ban(message.from_id):
-        predict_post = await message.copy_to(chat_id=admin)
         from_id = str(message.from_id)
-        if message.from_user.username is not None:
-            username = str(message.from_user.username)
-            await bot.edit_message_caption(message_id=predict_post.message_id, chat_id=admin,
-                                           caption=message.caption
-                                                   + '\n\n' + 'Сообщение от id: ' + from_id + ', username: @' + username,
-                                           caption_entities=message.caption_entities)
+        if message.caption is None:
+            if message.from_user.username is not None:
+                username = str(message.from_user.username)
+                await message.copy_to(chat_id=admin, caption='\n\n' + 'Сообщение от id: ' + from_id + ', username: @' + username)
+            else:
+                await message.copy_to(chat_id=admin, caption='\n\n' + 'Сообщение от id: ' + from_id)
+
         else:
-            await bot.edit_message_caption(message_id=predict_post.message_id, chat_id=admin,
-                                           caption=message.caption
-                                                   + '\n\n' + 'Сообщение от id: ' + from_id + '\n\n' + message.caption,
-                                           caption_entities=message.caption_entities)
+            predict_post = await message.copy_to(chat_id=admin)
+
+            if message.from_user.username is not None:
+                username = str(message.from_user.username)
+                await bot.edit_message_caption(message_id=predict_post.message_id, chat_id=admin,
+                                               caption=message.caption
+                                                       + '\n\n' + 'Сообщение от id: ' + from_id + ', username: @' + username,
+                                               caption_entities=message.caption_entities)
+            else:
+                await bot.edit_message_caption(message_id=predict_post.message_id, chat_id=admin,
+                                               caption=message.caption
+                                                       + '\n\n' + 'Сообщение от id: ' + from_id,
+                                               caption_entities=message.caption_entities)
+
 
         await message.answer('Обращение принято, мы постараемся ответить на него')
 
