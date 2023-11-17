@@ -71,7 +71,10 @@ async def predict_channel(message: types.Message):
             await ban(ban_user_id)
             await bot.send_message(chat_id=ban_user_id, text='Вы заблокированы')
         except Exception as e:
-            await message.answer('Неудача: заблокировать можно ответив на первый элемент или текст в медиа-группе')
+            if 'bot was blocked by the user' in str(e):
+                pass
+            else:
+                await message.answer('Неудача: заблокировать можно ответив на первый элемент или текст в медиа-группе')
 
 
 @dp.message_handler((F.text == '+unban') & (F.from_user.id == admin))
@@ -86,7 +89,10 @@ async def predict_channel(message: types.Message):
             await unban(ban_user_id)
             await bot.send_message(chat_id=ban_user_id, text='Вы разблокированы')
         except Exception as e:
-            await message.answer('Неудача: заблокировать можно ответив на первый элемент или текст в медиа-группе')
+            if 'bot was blocked by the user' in str(e):
+                pass
+            else:
+                await message.answer('Неудача: заблокировать можно ответив на первый элемент или текст в медиа-группе')
 
 
 @dp.message_handler(MediaGroupFilter(is_media_group=True), F.from_user.id == admin, content_types=['any'])
@@ -117,12 +123,17 @@ async def album_handler(messages: List[types.Message]):
             predict_user_id = messages[0].reply_to_message.text.split('#id')[1].split(',')[0]
             await bot.send_media_group(chat_id=predict_user_id, media=media)
         except Exception as e:
-            try:
-                predict_user_id = messages[0].reply_to_message.caption.split('#id')[1].split(',')[0]
-                await bot.send_media_group(chat_id=predict_user_id, media=media)
-            except Exception as e:
-                await messages[0].answer(
-                    'Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
+            if 'bot was blocked by the user' in str(e):
+                await messages[0].answer('Пользователь #id' + str(
+                    messages[0].reply_to_message.text.split('#id')[1].split(',')[0]) + ' заблокировал бота')
+            else:
+                try:
+                    predict_user_id = messages[0].reply_to_message.caption.split('#id')[1].split(',')[0]
+                    await bot.send_media_group(chat_id=predict_user_id, media=media)
+                except Exception as e:
+                    print(e)
+                    await messages[0].answer(
+                        'Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
 
 
 @dp.message_handler(F.from_user.id == admin, content_types='any')
@@ -131,11 +142,18 @@ async def predict_answer_media(message: types.Message):
         predict_user_id = message.reply_to_message.text.split('#id')[1].split(',')[0]
         await bot.copy_message(chat_id=predict_user_id, from_chat_id=message.chat.id, message_id=message.message_id)
     except Exception as e:
-        try:
-            predict_user_id = message.reply_to_message.caption.split('#id')[1].split(',')[0]
-            await bot.copy_message(chat_id=predict_user_id, from_chat_id=message.chat.id, message_id=message.message_id)
-        except Exception as e:
-            await message.answer('Сообщение не отправлено: Ответить можно на первый элемент или текст в медиа-группе')
+        if 'bot was blocked by the user' in str(e):
+            await message.answer('Пользователь #id' + str(
+                message.reply_to_message.text.split('#id')[1].split(',')[0]) + ' заблокировал бота')
+        else:
+            try:
+                predict_user_id = message.reply_to_message.caption.split('#id')[1].split(',')[0]
+                await bot.copy_message(chat_id=predict_user_id, from_chat_id=message.chat.id,
+                                       message_id=message.message_id)
+            except Exception as e:
+                print(e)
+                await message.answer(
+                    'Сообщение не отправлено')
 
 
 @dp.message_handler(commands=['start'])
